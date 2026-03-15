@@ -24,12 +24,140 @@ function getAuthErrorCode(error) {
   return 'google_failed';
 }
 
+function requireAuth(req, res, next) {
+  if (!req.session.user?.id) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  return next();
+}
+
+function sanitizeAvatar(value) {
+  const avatar = String(value || '').trim();
+  if (!avatar) {
+    return null;
+  }
+
+  if (!/^https?:\/\//i.test(avatar)) {
+    return null;
+  }
+
+  return avatar.slice(0, 500);
+}
+
+function formatAccount(row) {
+  return {
+    id: Number(row.id),
+    username: row.username,
+    email: row.email,
+    avatar: row.avatar || null,
+    hasPassword: Boolean(row.password_hash),
+    hasGoogle: Boolean(row.google_id),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 router.get('/session', (req, res) => {
   if (req.session.user) {
     return res.json({ authenticated: true, user: req.session.user });
   }
 
   return res.status(401).json({ authenticated: false });
+});
+
+router.get('/account', requireAuth, async (req, res) => {
+  try {
+    const db = getDb();
+    const [rows] = await db.execute(
+      `SELECT id, username, email, avatar, password_hash, google_id, created_at, updated_at
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      [req.session.user.id]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+
+    req.session.user = sanitizeUser(user);
+    return res.json({ ok: true, user: req.session.user, account: formatAccount(user) });
+  } catch (error) {
+    logger.error('Account fetch failed', { error: String(error.message || error) });
+    return res.status(500).json({ error: 'Failed to load account.' });
+  }
+});
+
+router.put('/account', requireAuth, async (req, res) => {
+  const username = String(req.body.username || '').trim();
+  const avatar = sanitizeAvatar(req.body.avatar);
+
+  if (username.length < 3 || username.length > 50) {
+    return res.status(400).json({ error: 'Username must be 3-50 characters.' });
+  }
+
+  try {
+    const db = getDb();
+    await db.execute(
+      'UPDATE users SET username = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [username, avatar, req.session.user.id]
+    );
+
+    const [rows] = await db.execute(
+      `SELECT id, username, email, avatar, password_hash, google_id, created_at, updated_at
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      [req.session.user.id]
+    );
+
+    const user = rows[0];
+    req.session.user = sanitizeUser(user);
+    return res.json({ ok: true, user: req.session.user, account: formatAccount(user) });
+  } catch (error) {
+    logger.error('Account update failed', { error: String(error.message || error) });
+    return res.status(500).json({ error: 'Failed to update account.' });
+  }
+});
+
+router.post('/account/password', requireAuth, async (req, res) => {
+  const currentPassword = String(req.body.current_password || '');
+  const newPassword = String(req.body.new_password || '');
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+
+  try {
+    const db = getDb();
+    const [rows] = await db.execute(
+      'SELECT id, password_hash FROM users WHERE id = ? LIMIT 1',
+      [req.session.user.id]
+    );
+    const user = rows[0];
+
+    if (!user) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+
+    if (user.password_hash && !bcrypt.compareSync(currentPassword, user.password_hash)) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10);
+    await db.execute(
+      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [passwordHash, req.session.user.id]
+    );
+
+    return res.json({ ok: true });
+  } catch (error) {
+    logger.error('Password update failed', { error: String(error.message || error) });
+    return res.status(500).json({ error: 'Failed to update password.' });
+  }
 });
 
 router.post('/login', async (req, res) => {

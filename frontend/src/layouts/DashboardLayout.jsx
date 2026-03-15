@@ -26,15 +26,70 @@ const navItems = [
   { to: '/dashboard/logs', icon: FileText, label: 'Logs' },
 ];
 
+function useAnimatedMenu(duration = 180) {
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const timeoutRef = useRef(null);
+
+  const finishClose = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setClosing(false);
+    setOpen(false);
+  };
+
+  const closeMenu = () => {
+    if (!open) {
+      return;
+    }
+    setClosing(true);
+    timeoutRef.current = setTimeout(finishClose, duration);
+  };
+
+  const openMenu = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setClosing(false);
+    setOpen(true);
+  };
+
+  const toggleMenu = () => {
+    if (open && !closing) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  };
+
+  useEffect(() => () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  }, []);
+
+  return {
+    isOpen: open && !closing,
+    isVisible: open || closing,
+    closing,
+    closeMenu,
+    openMenu,
+    toggleMenu,
+  };
+}
+
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [recentTasks, setRecentTasks] = useState([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
+  const profileMenu = useAnimatedMenu(190);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,17 +126,17 @@ export default function DashboardLayout() {
       }
 
       if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setProfileOpen(false);
+        profileMenu.closeMenu();
       }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, []);
+  }, [profileMenu]);
 
   const handleLogout = async () => {
     await logout();
-    setProfileOpen(false);
+    profileMenu.closeMenu();
     navigate('/');
   };
 
@@ -184,7 +239,7 @@ export default function DashboardLayout() {
               <button
                 onClick={() => {
                   setNotificationsOpen((open) => !open);
-                  setProfileOpen(false);
+                  profileMenu.closeMenu();
                 }}
                 className="relative w-9 h-9 rounded-lg bg-purple-500/[0.06] hover:bg-purple-500/[0.12] flex items-center justify-center text-gray-400 hover:text-white transition-all"
                 title="Notifications"
@@ -254,7 +309,7 @@ export default function DashboardLayout() {
               <div className="relative z-[100]" ref={profileRef}>
                 <button
                   onClick={() => {
-                    setProfileOpen((open) => !open);
+                    profileMenu.toggleMenu();
                     setNotificationsOpen(false);
                   }}
                   className="flex items-center gap-2 pl-1 pr-2 h-9 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] transition-all"
@@ -266,11 +321,11 @@ export default function DashboardLayout() {
                       user.username?.substring(0, 2).toUpperCase()
                     )}
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${profileOpen ? 'rotate-180 text-white' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${profileMenu.isOpen ? 'rotate-180 text-white' : ''}`} />
                 </button>
 
-                {profileOpen && (
-                  <div className="absolute right-0 mt-3 w-[280px] glass-strong rounded-2xl border border-purple-500/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden z-[150]">
+                {profileMenu.isVisible && (
+                  <div className={`dashboard-profile-menu absolute right-0 mt-3 w-[280px] overflow-hidden z-[150] ${profileMenu.closing ? 'closing' : 'opening'}`}>
                     <div className="px-4 py-4 border-b border-white/[0.06]">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-purple-500/[0.12] flex items-center justify-center text-purple-300 font-semibold overflow-hidden">
@@ -289,8 +344,8 @@ export default function DashboardLayout() {
 
                     <div className="p-2">
                       <Link
-                        to="/dashboard/settings"
-                        onClick={() => setProfileOpen(false)}
+                        to="/dashboard/account"
+                        onClick={() => profileMenu.closeMenu()}
                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-300 hover:bg-white/[0.04] hover:text-white transition-colors"
                       >
                         <Settings className="w-4 h-4 text-purple-300" />
@@ -298,7 +353,7 @@ export default function DashboardLayout() {
                       </Link>
                       <Link
                         to="/dashboard"
-                        onClick={() => setProfileOpen(false)}
+                        onClick={() => profileMenu.closeMenu()}
                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-300 hover:bg-white/[0.04] hover:text-white transition-colors"
                       >
                         <User className="w-4 h-4 text-purple-300" />

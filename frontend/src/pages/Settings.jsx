@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   Search,
+  Send,
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -120,6 +121,8 @@ const fallbackMinecraftVersions = [
 
 const webhookDefaults = {
   username: 'EnderScope',
+  message: 'Potential open server detected.',
+  mentions: '',
   title: 'New Server Found: {ip}:{port}',
   description:
     '{motd}\nVersion: {version}\nPlayers: {players_online}/{players_max}\nWhitelist: {whitelist}\nSource: {source}',
@@ -193,6 +196,14 @@ function getWebhookAppearance(settings) {
       settings.discord_webhook_username === undefined
         ? webhookDefaults.username
         : settings.discord_webhook_username,
+    message:
+      settings.discord_webhook_message === undefined
+        ? webhookDefaults.message
+        : settings.discord_webhook_message,
+    mentions:
+      settings.discord_webhook_mentions === undefined
+        ? webhookDefaults.mentions
+        : settings.discord_webhook_mentions,
     title:
       settings.discord_webhook_title === undefined
         ? webhookDefaults.title
@@ -588,6 +599,8 @@ export default function Settings() {
     buildVersionOptions(fallbackMinecraftVersions)
   );
   const [versionsLoading, setVersionsLoading] = useState(true);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [webhookTestMessage, setWebhookTestMessage] = useState('');
 
   useEffect(() => {
     api.get('/settings').then(setSettings).catch(() => {});
@@ -679,6 +692,29 @@ export default function Settings() {
     setSaving(false);
   };
 
+  const sendWebhookTest = async () => {
+    setTestingWebhook(true);
+    setWebhookTestMessage('');
+
+    try {
+      await api.post('/settings/test-webhook', {
+        discord_webhook_url: settings.discord_webhook_url,
+        discord_webhook_username: settings.discord_webhook_username,
+        discord_webhook_message: settings.discord_webhook_message,
+        discord_webhook_mentions: settings.discord_webhook_mentions,
+        discord_webhook_title: settings.discord_webhook_title,
+        discord_webhook_description: settings.discord_webhook_description,
+        discord_webhook_color: normalizeHexColor(settings.discord_webhook_color),
+        mc_version: settings.mc_version,
+      });
+      setWebhookTestMessage('Test webhook sent.');
+    } catch (error) {
+      setWebhookTestMessage(`Error: ${error.message}`);
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
   if (!settings) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
@@ -688,6 +724,10 @@ export default function Settings() {
   }
 
   const webhookAppearance = getWebhookAppearance(settings);
+  const previewContent = [webhookAppearance.mentions, webhookAppearance.message]
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+    .join('\n');
   const previewTitle = applyWebhookTemplate(webhookAppearance.title, webhookPreviewServer);
   const previewDescription = applyWebhookTemplate(
     webhookAppearance.description,
@@ -763,7 +803,23 @@ export default function Settings() {
                     Shape the Discord alert message and preview it before EnderScope sends anything.
                   </p>
                 </div>
-                <span className="settings-inline-badge">Live Preview</span>
+                <div className="flex items-center gap-3">
+                  {webhookTestMessage && (
+                    <span className={`text-sm ${webhookTestMessage.startsWith('Error:') ? 'text-rose-300' : 'text-emerald-300'}`}>
+                      {webhookTestMessage}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={sendWebhookTest}
+                    disabled={testingWebhook}
+                  >
+                    {testingWebhook ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {testingWebhook ? 'Sending...' : 'Send Test'}
+                  </button>
+                  <span className="settings-inline-badge">Live Preview</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)] gap-5">
@@ -804,6 +860,34 @@ export default function Settings() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 font-medium mb-1.5">
+                      Alert Line
+                    </label>
+                    <input
+                      className="input"
+                      value={settings.discord_webhook_message ?? webhookDefaults.message}
+                      onChange={(event) => update('discord_webhook_message', event.target.value)}
+                      placeholder={webhookDefaults.message}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 font-medium mb-1.5">
+                      Mentions
+                    </label>
+                    <textarea
+                      className="input settings-textarea settings-textarea-compact"
+                      rows={3}
+                      value={settings.discord_webhook_mentions ?? webhookDefaults.mentions}
+                      onChange={(event) => update('discord_webhook_mentions', event.target.value)}
+                      placeholder="<@123456789012345678> <@&987654321098765432> @everyone"
+                    />
+                    <p className="settings-field-hint">
+                      Use Discord mention syntax for users, roles, or `@everyone` / `@here`. Multiple mentions are fine.
+                    </p>
                   </div>
 
                   <div>
@@ -864,6 +948,10 @@ export default function Settings() {
                         <span className="settings-webhook-bot">BOT</span>
                         <span className="settings-webhook-time">now</span>
                       </div>
+
+                      {previewContent && (
+                        <p className="settings-webhook-content">{previewContent}</p>
+                      )}
 
                       <div
                         className="settings-webhook-embed"

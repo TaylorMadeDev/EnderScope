@@ -11,6 +11,7 @@ import Bruteforce from './pages/Bruteforce';
 import WhitelistChecker from './pages/WhitelistChecker';
 import Settings from './pages/Settings';
 import Logs from './pages/Logs';
+import AccountSettings from './pages/AccountSettings';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="shodan" element={<ShodanSearch />} />
           <Route path="bruteforce" element={<Bruteforce />} />
           <Route path="whitelist" element={<WhitelistChecker />} />
+          <Route path="account" element={<AccountSettings />} />
           <Route path="settings" element={<Settings />} />
           <Route path="logs" element={<Logs />} />
         </Route>

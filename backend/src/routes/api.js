@@ -199,6 +199,40 @@ router.put('/settings', (req, res) => {
   res.json({ ok: true, settings });
 });
 
+router.post('/settings/test-webhook', async (req, res) => {
+  const currentSettings = getConfig();
+  const nextSettings = {
+    ...currentSettings,
+    ...Object.fromEntries(
+      Object.entries(req.body || {}).filter(([, value]) => value !== null && value !== undefined)
+    ),
+  };
+
+  try {
+    await notifyDiscord(
+      nextSettings,
+      {
+        ip: 'play.endscope.gg',
+        port: 25565,
+        version: nextSettings.mc_version || '1.21.11',
+        motd: 'A test ping from EnderScope just landed in your webhook channel.',
+        players_online: 12,
+        players_max: 60,
+        whitelist: false,
+        source: 'settings-test',
+      },
+      { testMode: true }
+    );
+
+    return res.json({ ok: true });
+  } catch (error) {
+    logger.warn('Discord test webhook failed', { error: String(error.message || error) });
+    return res.status(400).json({
+      detail: String(error.message || 'Discord test webhook failed.'),
+    });
+  }
+});
+
 router.get('/logs', (req, res) => {
   res.json({ logs: getLogs() });
 });

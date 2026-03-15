@@ -6,6 +6,8 @@ const defaults = {
   shodan_api_key: '',
   discord_webhook_url: '',
   discord_webhook_username: 'EnderScope',
+  discord_webhook_message: 'Potential open server detected.',
+  discord_webhook_mentions: '',
   discord_webhook_title: 'New Server Found: {ip}:{port}',
   discord_webhook_description:
     '{motd}\nVersion: {version}\nPlayers: {players_online}/{players_max}\nWhitelist: {whitelist}\nSource: {source}',

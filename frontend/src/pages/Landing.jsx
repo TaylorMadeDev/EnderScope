@@ -13,6 +13,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { planCatalog } from '../utils/accountAccess';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -61,36 +62,6 @@ const stats = [
   { value: '50K+', label: 'Scans Completed' },
   { value: '99.9%', label: 'Detection Rate' },
   { value: '< 3s', label: 'Avg Scan Time' },
-];
-
-const pricingPlans = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    desc: 'Get started with basic server scanning.',
-    features: ['50 Shodan searches/day', 'Basic port scanning', 'Up to 100 targets', 'CSV export', 'Community support'],
-    cta: 'Get Started',
-    highlighted: false,
-  },
-  {
-    name: 'Pro',
-    price: '$9.99',
-    period: '/month',
-    desc: 'Unlock the full power of EnderScope.',
-    features: ['Unlimited Shodan searches', 'Advanced port scanning', 'Unlimited targets', 'Whitelist verification', 'Discord webhooks', 'Priority support', 'API access'],
-    cta: 'Go Pro',
-    highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: '$29.99',
-    period: '/month',
-    desc: 'For teams and large-scale operations.',
-    features: ['Everything in Pro', 'Team dashboard', 'Custom integrations', 'Dedicated infrastructure', 'SLA guarantee', '24/7 premium support', 'Custom branding'],
-    cta: 'Contact Us',
-    highlighted: false,
-  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -245,7 +216,7 @@ export default function Landing() {
           <div className="hidden md:flex items-center gap-8 text-[13px] text-gray-500 font-medium">
             <a href="#features" className="hover:text-purple-400 transition-colors duration-200">Features</a>
             <a href="#how-it-works" className="hover:text-purple-400 transition-colors duration-200">How It Works</a>
-            <a href="#pricing" className="hover:text-purple-400 transition-colors duration-200">Pricing</a>
+            <a href="#pricing" className="hover:text-purple-400 transition-colors duration-200">Blocks</a>
             <a href="#stats" className="hover:text-purple-400 transition-colors duration-200">Stats</a>
           </div>
           <div className="flex items-center gap-3">
@@ -413,50 +384,66 @@ export default function Landing() {
       <section id="pricing" className="pricing-section relative py-32 px-6 border-t border-purple-500/[0.06] z-10">
         <div className="max-w-6xl mx-auto">
           <div className="pricing-heading text-center mb-20">
-            <span className="text-fuchsia-400/80 text-[13px] font-semibold uppercase tracking-[4px]">Pricing</span>
-            <h2 className="text-4xl sm:text-5xl font-bold mt-4 tracking-tight">Choose Your Plan</h2>
+            <span className="text-fuchsia-400/80 text-[13px] font-semibold uppercase tracking-[4px]">Blocks</span>
+            <h2 className="text-4xl sm:text-5xl font-bold mt-4 tracking-tight">Choose Your Block</h2>
             <p className="text-gray-500 mt-5 max-w-lg mx-auto leading-relaxed">
-              Start free and upgrade when you need more power.
+              Every tier is named like a Minecraft block so the product feels native now, and each step leaves room for future bot tooling.
             </p>
           </div>
 
-          <div className="pricing-cards grid grid-cols-1 md:grid-cols-3 gap-6">
-            {pricingPlans.map((plan) => (
+          <div className="pricing-cards grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {planCatalog.map((plan) => (
               <div
-                key={plan.name}
+                key={plan.key}
                 className={`pricing-card relative rounded-2xl p-8 transition-all duration-300 ${
-                  plan.highlighted
+                  plan.featured
                     ? 'bg-gradient-to-b from-purple-500/[0.12] to-purple-900/[0.05] border-2 border-purple-500/30 shadow-[0_0_60px_rgba(168,85,247,0.1)]'
                     : 'glass-end hover:border-purple-500/20'
                 }`}
               >
-                {plan.highlighted && (
+                {plan.featured && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-purple-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">
                     <Crown className="w-3.5 h-3.5" /> Most Popular
                   </div>
                 )}
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
-                  <p className="text-gray-500 text-sm">{plan.desc}</p>
+                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${plan.accent} opacity-80 pointer-events-none`} />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between gap-4 mb-6">
+                    <div>
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${plan.badgeTone}`}>
+                        {plan.tagline}
+                      </span>
+                      <h3 className="text-lg font-bold mt-4 mb-1">{plan.name}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{plan.description}</p>
+                    </div>
+                    <div className="relative shrink-0">
+                      <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl opacity-50" />
+                      <img
+                        src={plan.image}
+                        alt={`${plan.name} block`}
+                        className="relative w-20 h-20 object-contain drop-shadow-[0_16px_28px_rgba(8,4,20,0.55)]"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-8">
+                    <span className="text-4xl font-black">{plan.price}</span>
+                    <span className="text-gray-500 text-sm ml-1">{plan.period}</span>
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feat) => (
+                      <li key={feat} className="flex items-center gap-2.5 text-sm text-gray-300">
+                        <Check className={`w-4 h-4 flex-shrink-0 ${plan.featured ? 'text-purple-300' : 'text-gray-500'}`} />
+                        {feat}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    to="/register"
+                    className={`btn w-full ${plan.featured ? 'btn-primary' : 'btn-secondary'}`}
+                  >
+                    {plan.key === 'dirt' ? 'Start Free' : `Choose ${plan.name}`}
+                  </Link>
                 </div>
-                <div className="mb-8">
-                  <span className="text-4xl font-black">{plan.price}</span>
-                  <span className="text-gray-500 text-sm ml-1">{plan.period}</span>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feat) => (
-                    <li key={feat} className="flex items-center gap-2.5 text-sm text-gray-400">
-                      <Check className={`w-4 h-4 flex-shrink-0 ${plan.highlighted ? 'text-purple-400' : 'text-gray-600'}`} />
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/register"
-                  className={`btn w-full ${plan.highlighted ? 'btn-primary' : 'btn-secondary'}`}
-                >
-                  {plan.cta}
-                </Link>
               </div>
             ))}
           </div>

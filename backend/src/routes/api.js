@@ -9,6 +9,14 @@ import { runWhitelistChecks } from '../services/whitelist-service.js';
 
 const router = express.Router();
 
+function requireAuth(req, res, next) {
+  if (!req.session.user?.id) {
+    return res.status(401).json({ detail: 'Authentication required.' });
+  }
+
+  return next();
+}
+
 router.get('/tasks/:taskId', (req, res) => {
   const task = getTask(req.params.taskId);
   if (!task) return res.status(404).json({ detail: 'Task not found' });
@@ -21,12 +29,12 @@ router.post('/tasks/:taskId/cancel', (req, res) => {
   return res.json({ ok: true });
 });
 
-router.get('/dashboard/stats', (req, res) => {
+router.get('/dashboard/stats', requireAuth, (req, res) => {
   res.json(getTaskStats());
 });
 
-router.post('/shodan/search', async (req, res) => {
-  const settings = getConfig();
+router.post('/shodan/search', requireAuth, async (req, res) => {
+  const settings = await getConfig(req.session.user.id);
   const apiKey = String(req.body.api_key || settings.shodan_api_key || '').trim();
 
   if (!apiKey) {
@@ -73,8 +81,8 @@ router.post('/shodan/search', async (req, res) => {
   return res.json({ task_id: task.id });
 });
 
-router.post('/bruteforce/scan', async (req, res) => {
-  const settings = getConfig();
+router.post('/bruteforce/scan', requireAuth, async (req, res) => {
+  const settings = await getConfig(req.session.user.id);
   const targets = parseTargets(String(req.body.targets || ''));
   if (!targets.length) {
     return res.status(400).json({ detail: 'No valid targets provided.' });
@@ -117,8 +125,8 @@ router.post('/bruteforce/scan', async (req, res) => {
   return res.json({ task_id: task.id });
 });
 
-router.post('/whitelist/check', async (req, res) => {
-  const settings = getConfig();
+router.post('/whitelist/check', requireAuth, async (req, res) => {
+  const settings = await getConfig(req.session.user.id);
   const rawServers = Array.isArray(req.body.servers) ? req.body.servers : [];
   if (!rawServers.length) {
     return res.status(400).json({ detail: 'No servers provided.' });
@@ -187,20 +195,21 @@ router.post('/whitelist/check', async (req, res) => {
   return res.json({ task_id: task.id });
 });
 
-router.get('/settings', (req, res) => {
-  res.json(getConfig());
+router.get('/settings', requireAuth, async (req, res) => {
+  const settings = await getConfig(req.session.user.id);
+  res.json(settings);
 });
 
-router.put('/settings', (req, res) => {
+router.put('/settings', requireAuth, async (req, res) => {
   const updates = Object.fromEntries(
     Object.entries(req.body || {}).filter(([, value]) => value !== null && value !== undefined)
   );
-  const settings = updateConfig(updates);
+  const settings = await updateConfig(req.session.user.id, updates);
   res.json({ ok: true, settings });
 });
 
-router.post('/settings/test-webhook', async (req, res) => {
-  const currentSettings = getConfig();
+router.post('/settings/test-webhook', requireAuth, async (req, res) => {
+  const currentSettings = await getConfig(req.session.user.id);
   const nextSettings = {
     ...currentSettings,
     ...Object.fromEntries(
@@ -233,7 +242,7 @@ router.post('/settings/test-webhook', async (req, res) => {
   }
 });
 
-router.get('/logs', (req, res) => {
+router.get('/logs', requireAuth, (req, res) => {
   res.json({ logs: getLogs() });
 });
 

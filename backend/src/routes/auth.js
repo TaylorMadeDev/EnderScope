@@ -3,6 +3,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { getDb } from '../lib/database.js';
 import { config } from '../config.js';
+import { normalizePlan, normalizeRole, PLAN_VALUES, ROLE_VALUES } from '../lib/account-access.js';
 import { logger } from '../lib/log-store.js';
 
 const router = express.Router();
@@ -13,6 +14,8 @@ function sanitizeUser(user) {
     username: user.username,
     email: user.email,
     avatar: user.avatar || null,
+    plan: normalizePlan(user.plan),
+    role: normalizeRole(user.role),
   };
 }
 
@@ -27,6 +30,14 @@ function getAuthErrorCode(error) {
 function requireAuth(req, res, next) {
   if (!req.session.user?.id) {
     return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  return next();
+}
+
+function requireAdmin(req, res, next) {
+  if (normalizeRole(req.session.user?.role) !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required.' });
   }
 
   return next();
@@ -51,6 +62,8 @@ function formatAccount(row) {
     username: row.username,
     email: row.email,
     avatar: row.avatar || null,
+    plan: normalizePlan(row.plan),
+    role: normalizeRole(row.role),
     hasPassword: Boolean(row.password_hash),
     hasGoogle: Boolean(row.google_id),
     createdAt: row.created_at,
@@ -70,7 +83,7 @@ router.get('/account', requireAuth, async (req, res) => {
   try {
     const db = getDb();
     const [rows] = await db.execute(
-      `SELECT id, username, email, avatar, password_hash, google_id, created_at, updated_at
+      `SELECT id, username, email, avatar, plan, role, password_hash, google_id, created_at, updated_at
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -107,7 +120,7 @@ router.put('/account', requireAuth, async (req, res) => {
     );
 
     const [rows] = await db.execute(
-      `SELECT id, username, email, avatar, password_hash, google_id, created_at, updated_at
+      `SELECT id, username, email, avatar, plan, role, password_hash, google_id, created_at, updated_at
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -171,7 +184,7 @@ router.post('/login', async (req, res) => {
   try {
     const db = getDb();
     const [rows] = await db.execute(
-      'SELECT id, username, email, password_hash, avatar FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, username, email, password_hash, avatar, plan, role FROM users WHERE email = ? LIMIT 1',
       [email]
     );
     const user = rows[0];
@@ -212,10 +225,13 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
+    const [countRows] = await db.execute('SELECT COUNT(*) AS total FROM users');
     const passwordHash = bcrypt.hashSync(password, 10);
+    const role = Number(countRows[0]?.total || 0) === 0 ? 'admin' : 'member';
+    const plan = 'dirt';
     const [result] = await db.execute(
-      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-      [username, email, passwordHash]
+      'INSERT INTO users (username, email, password_hash, plan, role) VALUES (?, ?, ?, ?, ?)',
+      [username, email, passwordHash, plan, role]
     );
 
     req.session.user = {
@@ -223,6 +239,8 @@ router.post('/register', async (req, res) => {
       username,
       email,
       avatar: null,
+      plan,
+      role,
     };
 
     return res.json({ ok: true, user: req.session.user });
@@ -300,7 +318,7 @@ async function handleGoogleCallback(req, res) {
 
     const db = getDb();
     const [rows] = await db.execute(
-      'SELECT id, username, email, avatar FROM users WHERE google_id = ? OR email = ? LIMIT 1',
+      'SELECT id, username, email, avatar, plan, role FROM users WHERE google_id = ? OR email = ? LIMIT 1',
       [profile.id, profile.email]
     );
 
@@ -317,15 +335,19 @@ async function handleGoogleCallback(req, res) {
       };
     } else {
       const username = profile.name || String(profile.email).split('@')[0];
+      const [countRows] = await db.execute('SELECT COUNT(*) AS total FROM users');
+      const role = Number(countRows[0]?.total || 0) === 0 ? 'admin' : 'member';
       const [result] = await db.execute(
-        'INSERT INTO users (username, email, google_id, avatar) VALUES (?, ?, ?, ?)',
-        [username, profile.email, profile.id, profile.picture || null]
+        'INSERT INTO users (username, email, google_id, avatar, plan, role) VALUES (?, ?, ?, ?, ?, ?)',
+        [username, profile.email, profile.id, profile.picture || null, 'dirt', role]
       );
       user = {
         id: Number(result.insertId),
         username,
         email: profile.email,
         avatar: profile.picture || null,
+        plan: 'dirt',
+        role,
       };
     }
 
@@ -343,5 +365,93 @@ async function handleGoogleCallback(req, res) {
 
 router.get('/google-callback', handleGoogleCallback);
 router.get('/google/callback', handleGoogleCallback);
+
+router.get('/access-meta', requireAuth, (req, res) => {
+  return res.json({
+    ok: true,
+    plans: PLAN_VALUES,
+    roles: ROLE_VALUES,
+  });
+});
+
+router.get('/admin/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const [rows] = await db.execute(
+      `SELECT id, username, email, avatar, plan, role, created_at, updated_at
+       FROM users
+       ORDER BY created_at ASC`
+    );
+
+    return res.json({
+      ok: true,
+      users: rows.map((row) => ({
+        id: Number(row.id),
+        username: row.username,
+        email: row.email,
+        avatar: row.avatar || null,
+        plan: normalizePlan(row.plan),
+        role: normalizeRole(row.role),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })),
+    });
+  } catch (error) {
+    logger.error('Admin user list failed', { error: String(error.message || error) });
+    return res.status(500).json({ error: 'Failed to load users.' });
+  }
+});
+
+router.put('/admin/users/:userId/access', requireAuth, requireAdmin, async (req, res) => {
+  const userId = Number(req.params.userId);
+  const plan = normalizePlan(req.body.plan);
+  const role = normalizeRole(req.body.role);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Invalid user id.' });
+  }
+
+  try {
+    const db = getDb();
+    await db.execute(
+      'UPDATE users SET plan = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [plan, role, userId]
+    );
+
+    const [rows] = await db.execute(
+      `SELECT id, username, email, avatar, plan, role, created_at, updated_at
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    const targetUser = rows[0];
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (Number(targetUser.id) === Number(req.session.user.id)) {
+      req.session.user = sanitizeUser(targetUser);
+    }
+
+    return res.json({
+      ok: true,
+      user: {
+        id: Number(targetUser.id),
+        username: targetUser.username,
+        email: targetUser.email,
+        avatar: targetUser.avatar || null,
+        plan: normalizePlan(targetUser.plan),
+        role: normalizeRole(targetUser.role),
+        createdAt: targetUser.created_at,
+        updatedAt: targetUser.updated_at,
+      },
+    });
+  } catch (error) {
+    logger.error('Admin user access update failed', { error: String(error.message || error) });
+    return res.status(500).json({ error: 'Failed to update user access.' });
+  }
+});
 
 export default router;

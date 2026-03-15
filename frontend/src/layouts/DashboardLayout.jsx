@@ -12,12 +12,13 @@ import {
   LogOut,
   User,
   ChevronDown,
+  Crown,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
-const navItems = [
+const baseNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/dashboard/shodan', icon: Search, label: 'Shodan Search' },
   { to: '/dashboard/bruteforce', icon: Zap, label: 'Bruteforce' },
@@ -141,6 +142,9 @@ export default function DashboardLayout() {
   };
 
   const runningTasks = recentTasks.filter((task) => task.status === 'running').length;
+  const navItems = user?.role === 'admin'
+    ? [...baseNavItems, { to: '/dashboard/admin', icon: Crown, label: 'Admin' }]
+    : baseNavItems;
 
   const statusStyles = (status) => {
     if (status === 'completed') {
@@ -359,6 +363,16 @@ export default function DashboardLayout() {
                         <User className="w-4 h-4 text-purple-300" />
                         Dashboard Home
                       </Link>
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/dashboard/admin"
+                          onClick={() => profileMenu.closeMenu()}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-300 hover:bg-white/[0.04] hover:text-white transition-colors"
+                        >
+                          <Crown className="w-4 h-4 text-purple-300" />
+                          Admin Panel
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-rose-300 hover:bg-rose-500/[0.08] transition-colors"

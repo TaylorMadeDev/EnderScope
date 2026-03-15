@@ -12,8 +12,11 @@ import {
   Eye,
   EyeOff,
   Link2,
+  Boxes,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getPlanMeta, getRoleMeta } from '../utils/accountAccess';
 
 function SecretField({
   label,
@@ -139,6 +142,9 @@ export default function AccountSettings() {
     return providers;
   }, [account]);
 
+  const activePlan = getPlanMeta(account?.plan || user?.plan);
+  const activeRole = getRoleMeta(account?.role || user?.role);
+
   const saveProfile = async () => {
     setSavingProfile(true);
     setProfileMessage('');
@@ -244,12 +250,20 @@ export default function AccountSettings() {
               <div className="account-kicker">Account settings</div>
               <h1 className="account-title">{profile.username || user?.username}</h1>
               <p className="account-subtitle">
-                Manage your identity, security, and linked sign-in methods for EnderScope.
+                Manage your personal identity, membership, security, and sign-in methods for EnderScope.
               </p>
             </div>
           </div>
 
           <div className="account-provider-row">
+            <span className="account-pill subtle">
+              <Boxes className="w-3.5 h-3.5" />
+              Membership: {activePlan.name}
+            </span>
+            <span className={`account-pill ${activeRole.key === 'admin' ? 'success' : ''}`}>
+              <Crown className="w-3.5 h-3.5" />
+              Account Type: {activeRole.name}
+            </span>
             {providerSummary.map((provider) => (
               <span
                 key={provider.label}
@@ -274,7 +288,7 @@ export default function AccountSettings() {
               <div>
                 <h2 className="settings-panel-title">Profile</h2>
                 <p className="settings-panel-copy">
-                  Update the name and avatar other parts of the dashboard use when you are signed in.
+                  Update the name and avatar the dashboard uses while you are signed in.
                 </p>
               </div>
               <button className="btn btn-primary" onClick={saveProfile} disabled={savingProfile}>
@@ -427,9 +441,81 @@ export default function AccountSettings() {
                 <div className="account-stat-value">{formatTimestamp(account?.updatedAt)}</div>
               </div>
               <div className="account-stat-card">
+                <div className="account-stat-label">Membership</div>
+                <div className="account-stat-value">{activePlan.name}</div>
+              </div>
+              <div className="account-stat-card">
+                <div className="account-stat-label">Account type</div>
+                <div className="account-stat-value">{activeRole.name}</div>
+              </div>
+              <div className="account-stat-card">
                 <div className="account-stat-label">Primary sign-in</div>
                 <div className="account-stat-value">
                   {account?.hasGoogle ? 'Google + session' : account?.hasPassword ? 'Email + password' : 'Session'}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="glass rounded-[24px] p-6 account-panel account-panel-delay-4">
+            <div className="account-side-title">
+              <Boxes className="w-4 h-4 text-purple-300" />
+              Membership
+            </div>
+            <div className="mt-5 rounded-[24px] border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.24em] text-gray-500 font-semibold">
+                    {activePlan.tagline}
+                  </div>
+                  <div className="text-xl font-semibold text-white/90 mt-2">
+                    {activePlan.name} plan
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2 leading-relaxed">
+                    {activePlan.description}
+                  </p>
+                </div>
+                <img src={activePlan.image} alt={`${activePlan.name} block`} className="w-20 h-20 object-contain shrink-0" />
+              </div>
+              <div className="grid grid-cols-1 gap-2 mt-4">
+                {activePlan.features.slice(0, 3).map((feature) => (
+                  <div key={feature} className="rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2 text-sm text-gray-300">
+                    {feature}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="glass rounded-[24px] p-6 account-panel account-panel-delay-4">
+            <div className="account-side-title">
+              <Crown className="w-4 h-4 text-purple-300" />
+              Account Type
+            </div>
+            <div className="mt-5 rounded-[24px] border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.24em] text-gray-500 font-semibold">
+                    Access tier
+                  </div>
+                  <div className="text-xl font-semibold text-white/90 mt-2">
+                    {activeRole.name}
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2 leading-relaxed">
+                    {activeRole.description}
+                  </p>
+                </div>
+                <div className={`account-pill ${activeRole.key === 'admin' ? 'success' : ''}`}>
+                  <Crown className="w-3.5 h-3.5" />
+                  {activeRole.name}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 mt-4">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2 text-sm text-gray-300">
+                  Membership tier: <span className="text-white/90 font-medium">{activePlan.name}</span>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2 text-sm text-gray-300">
+                  Permissions: <span className="text-white/90 font-medium">{activeRole.name}</span>
                 </div>
               </div>
             </div>

@@ -8,6 +8,37 @@ const defaults = {
   color: '#8b5cf6',
 };
 
+function normalizeWebhookUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  try {
+    const url = new URL(raw);
+    const allowedHosts = new Set([
+      'discord.com',
+      'www.discord.com',
+      'ptb.discord.com',
+      'canary.discord.com',
+      'discordapp.com',
+      'www.discordapp.com',
+    ]);
+
+    if (!allowedHosts.has(url.hostname.toLowerCase())) {
+      return '';
+    }
+
+    if (!url.pathname.startsWith('/api/webhooks/')) {
+      return '';
+    }
+
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
 function normalizeColor(value) {
   const raw = String(value || '').trim().replace(/^#/, '');
   if (/^[0-9a-fA-F]{6}$/.test(raw)) {
@@ -76,10 +107,11 @@ function buildContent(settings, server, options = {}) {
 }
 
 export async function notifyDiscord(settings, server, options = {}) {
-  const webhookUrl =
-    typeof settings === 'string' ? settings : String(settings?.discord_webhook_url || '');
+  const webhookUrl = normalizeWebhookUrl(
+    typeof settings === 'string' ? settings : settings?.discord_webhook_url
+  );
 
-  if (!webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+  if (!webhookUrl) {
     throw new Error('Discord webhook URL is not configured.');
   }
 

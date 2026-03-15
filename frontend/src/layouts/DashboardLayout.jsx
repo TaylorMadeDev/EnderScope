@@ -118,9 +118,21 @@ export default function DashboardLayout() {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-purple-500/[0.06]">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <img src="/assets/enderman.png" alt="" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform duration-300" />
-            <span className="font-bold text-[17px] tracking-tight">EnderScope</span>
+          <Link
+            to="/"
+            className="flex items-center gap-3 group rounded-xl px-2 py-1.5 -ml-2 hover:bg-white/[0.03] transition-all duration-300"
+          >
+            <span className="relative">
+              <span className="absolute inset-0 rounded-full bg-purple-400/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <img
+                src="/assets/EnderScopeLogo.svg"
+                alt="EnderScope"
+                className="relative h-7 w-auto object-contain brightness-100 group-hover:brightness-125 group-hover:scale-[1.03] transition-all duration-300"
+              />
+            </span>
+            <span className="font-bold text-[17px] tracking-tight text-white/90 group-hover:text-white transition-colors duration-300">
+              EnderScope
+            </span>
           </Link>
           <button className="lg:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
@@ -158,7 +170,7 @@ export default function DashboardLayout() {
       {/* ---------- Main area ---------- */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top nav */}
-        <header className="h-16 bg-[#0f0a1a]/80 backdrop-blur-2xl border-b border-purple-500/[0.06] flex items-center justify-between px-6 flex-shrink-0">
+        <header className="relative z-[90] h-16 bg-[#0f0a1a]/80 backdrop-blur-2xl border-b border-purple-500/[0.06] flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden text-gray-400 hover:text-white transition-colors"
@@ -168,7 +180,7 @@ export default function DashboardLayout() {
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative" ref={notificationsRef}>
+            <div className="relative z-[95]" ref={notificationsRef}>
               <button
                 onClick={() => {
                   setNotificationsOpen((open) => !open);
@@ -186,7 +198,7 @@ export default function DashboardLayout() {
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-3 w-[320px] glass-strong rounded-2xl border border-purple-500/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden z-[70]">
+                <div className="absolute right-0 mt-3 w-[320px] glass-strong rounded-2xl border border-purple-500/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden z-[140]">
                   <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-white">Notifications</p>
@@ -239,7 +251,7 @@ export default function DashboardLayout() {
             </div>
 
             {user && (
-              <div className="relative" ref={profileRef}>
+              <div className="relative z-[100]" ref={profileRef}>
                 <button
                   onClick={() => {
                     setProfileOpen((open) => !open);
@@ -258,7 +270,7 @@ export default function DashboardLayout() {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-3 w-[280px] glass-strong rounded-2xl border border-purple-500/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden z-[70]">
+                  <div className="absolute right-0 mt-3 w-[280px] glass-strong rounded-2xl border border-purple-500/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden z-[150]">
                     <div className="px-4 py-4 border-b border-white/[0.06]">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-purple-500/[0.12] flex items-center justify-center text-purple-300 font-semibold overflow-hidden">

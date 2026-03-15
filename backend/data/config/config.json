@@ -1,6 +1,10 @@
 {
-  "shodan_api_key": "",
+  "shodan_api_key": "Testic",
   "discord_webhook_url": "",
+  "discord_webhook_username": "EnderScope",
+  "discord_webhook_title": "New Server Found: {ip}:{port}",
+  "discord_webhook_description": "{motd}\nVersion: {version}\nPlayers: {players_online}/{players_max}\nWhitelist: {whitelist}\nSource: {source}",
+  "discord_webhook_color": "#8b5cf6",
   "mc_version": "1.20",
   "shodan_extra_query": "smp",
   "shodan_max_results": 103,

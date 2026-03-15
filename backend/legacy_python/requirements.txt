@@ -1,0 +1,6 @@
+# ServerBuster Backend Requirements
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+shodan>=1.31.0
+requests>=2.31.0
+pydantic>=2.6.0

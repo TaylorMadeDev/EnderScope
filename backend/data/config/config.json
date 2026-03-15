@@ -1,0 +1,15 @@
+{
+  "shodan_api_key": "",
+  "discord_webhook_url": "",
+  "mc_version": "1.20",
+  "shodan_extra_query": "smp",
+  "shodan_max_results": 103,
+  "scan_timeout": 5,
+  "proxy_list": [],
+  "bot_accounts": [],
+  "output_dir": "backend/data/output",
+  "theme": "dark",
+  "auto_notify_discord": false,
+  "max_bruteforce_threads": 50,
+  "whitelist_check_threads": 10
+}
